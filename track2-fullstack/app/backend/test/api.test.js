@@ -1,4 +1,4 @@
-const { after, before, test } = require('node:test');
+const { after, before, beforeEach, test } = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
@@ -13,8 +13,11 @@ const { db } = require('../db');
 let server;
 let baseUrl;
 
-before(async () => {
+beforeEach(() => {
   seedTestData();
+});
+
+before(async () => {
   server = await new Promise(resolve => {
     const instance = app.listen(0, '127.0.0.1', () => resolve(instance));
   });
@@ -30,7 +33,7 @@ after(async () => {
 });
 
 function seedTestData() {
-  db.exec('DELETE FROM health_events; DELETE FROM animals; DELETE FROM paddocks;');
+  db.exec('DELETE FROM health_events; DELETE FROM animals; DELETE FROM paddocks; DELETE FROM weights;');
 
   const northId = db.prepare(
     'INSERT INTO paddocks (name, capacity, animal_count) VALUES (?, ?, 0)'
@@ -180,4 +183,92 @@ test('POST /api/animals/:id/health-events creates an event', async () => {
   assert.equal(status, 201);
   assert.equal(body.event_type, 'checkup');
   assert.equal(body.animal_id, id);
+});
+
+// Tests for POST /api/animals/:id/weights
+test('POST /api/animals/:id/weights creates a weight record', async () => {
+  const { body: animals } = await get('/animals?page=0&limit=1');
+  const animalId = animals[0].id;
+
+  const { status, body } = await post(`/animals/${animalId}/weights`, {
+    weight_kg: 50.5,
+    date: '2024-05-01',
+    notes: 'First weigh-in'
+  });
+  assert.equal(status, 201);
+  assert.equal(body.animal_id, animalId);
+  assert.equal(body.weight_kg, 50.5);
+  assert.equal(body.date, '2024-05-01');
+  assert.equal(body.notes, 'First weigh-in');
+});
+
+test('POST /api/animals/:id/weights returns 400 for missing weight_kg', async () => {
+  const { body: animals } = await get('/animals?page=0&limit=1');
+  const animalId = animals[0].id;
+
+  const { status, body } = await post(`/animals/${animalId}/weights`, {
+    date: '2024-05-02'
+  });
+  assert.equal(status, 400);
+  assert.deepEqual(body.errors, ['Weight (weight_kg) is required and must be a positive number.']);
+});
+
+test('POST /api/animals/:id/weights returns 400 for non-positive weight_kg', async () => {
+  const { body: animals } = await get('/animals?page=0&limit=1');
+  const animalId = animals[0].id;
+
+  const { status, body } = await post(`/animals/${animalId}/weights`, {
+    weight_kg: 0,
+    date: '2024-05-02'
+  });
+  assert.equal(status, 400);
+  assert.deepEqual(body.errors, ['Weight (weight_kg) is required and must be a positive number.']);
+});
+
+test('POST /api/animals/:id/weights returns 400 for invalid date format', async () => {
+  const { body: animals } = await get('/animals?page=0&limit=1');
+  const animalId = animals[0].id;
+
+  const { status, body } = await post(`/animals/${animalId}/weights`, {
+    weight_kg: 50,
+    date: '02-05-2024' // Invalid format
+  });
+  assert.equal(status, 400);
+  assert.deepEqual(body.errors, ['Date is required and must be in YYYY-MM-DD format.']);
+});
+
+test('POST /api/animals/:id/weights returns 404 for non-existent animal_id', async () => {
+  const nonExistentAnimalId = 999999;
+  const { status, body } = await post(`/animals/${nonExistentAnimalId}/weights`, {
+    weight_kg: 50,
+    date: '2024-05-01'
+  });
+  assert.equal(status, 404);
+  assert.equal(body.message, 'Animal not found');
+});
+
+// Tests for GET /api/animals/:id/weights
+test('GET /api/animals/:id/weights returns weight history ordered by date descending', async () => {
+  const { body: animals } = await get('/animals?page=0&limit=1');
+  const animalId = animals[0].id;
+
+  // Add multiple weights to ensure ordering
+  await post(`/animals/${animalId}/weights`, { weight_kg: 50, date: '2024-05-01' });
+  await post(`/animals/${animalId}/weights`, { weight_kg: 52, date: '2024-05-03' });
+  await post(`/animals/${animalId}/weights`, { weight_kg: 51, date: '2024-05-02' });
+
+  const { status, body } = await get(`/animals/${animalId}/weights`);
+  assert.equal(status, 200);
+  assert.ok(Array.isArray(body));
+  assert.equal(body.length, 3);
+  assert.equal(body[0].date, '2024-05-03'); // Latest date first
+  assert.equal(body[1].date, '2024-05-02');
+  assert.equal(body[2].date, '2024-05-01');
+});
+
+test('GET /api/animals/:id/weights returns 404 for non-existent animal_id', async () => {
+  const nonExistentAnimalId = 999999;
+  const { status, body } = await get(`/animals/${nonExistentAnimalId}/weights`);
+  assert.equal(status, 404);
+  assert.equal(body.message, 'Animal not found');
 });
