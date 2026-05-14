@@ -25,9 +25,31 @@ router.get('/', (req, res) => {
 
 router.post('/', (req, res) => {
   const { name, tag_number, breed, date_of_birth, paddock_id } = req.body;
+  const errors = [];
 
-  if (!name || !tag_number) {
-    return res.status(400).json({ error: 'name and tag_number are required' });
+  if (!name || typeof name !== 'string' || name.trim() === '') {
+    errors.push('Name is required and must be a non-empty string.');
+  }
+  if (!tag_number || typeof tag_number !== 'string' || tag_number.trim() === '') {
+    errors.push('Tag number is required and must be a non-empty string.');
+  }
+  if (date_of_birth && !/^\d{4}-\d{2}-\d{2}$/.test(date_of_birth)) {
+    errors.push('Date of birth must be in YYYY-MM-DD format.');
+  }
+
+  if (paddock_id !== undefined && paddock_id !== null) {
+    if (typeof paddock_id !== 'number' || !Number.isInteger(paddock_id)) {
+      errors.push('Paddock ID must be an integer.');
+    } else {
+      const paddockExists = db.prepare('SELECT id FROM paddocks WHERE id = ?').get(paddock_id);
+      if (!paddockExists) {
+        errors.push(`Paddock with ID ${paddock_id} does not exist.`);
+      }
+    }
+  }
+
+  if (errors.length > 0) {
+    return res.status(400).json({ errors });
   }
 
   if (paddock_id) {
@@ -41,7 +63,7 @@ router.post('/', (req, res) => {
   ).run(name, tag_number, breed ?? null, date_of_birth ?? null, paddock_id ?? null);
 
   const animal = db.prepare('SELECT * FROM animals WHERE id = ?').get(result.lastInsertRowid);
-  res.json(animal);
+  res.status(201).json(animal);
 });
 
 router.get('/:id', (req, res) => {

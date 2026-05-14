@@ -1,2 +1,17 @@
-_ignore/
+# Node.js
 node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-store/
+.env
+.DS_Store
+.vscode/
+
+# FarmTracker specific
+farmtracker.db
+farmtracker.db-shm
+farmtracker.db-wal
+
+# Gemini CLI specific
+.gemini/

@@ -96,6 +96,79 @@ test('GET /api/animals/:id returns 404 for unknown id', async () => {
   assert.equal(status, 404);
 });
 
+test('POST /api/animals creates an animal', async () => {
+  // First, get an existing paddock ID to use for testing
+  const { body: paddocks } = await get('/paddocks');
+  assert.ok(paddocks.length > 0, 'Should have at least one paddock for testing');
+  const existingPaddockId = paddocks[0].id;
+
+  const { status, body } = await post('/animals', {
+    name: 'New Animal',
+    tag_number: 'TAG-NEW',
+    breed: 'Holstein',
+    date_of_birth: '2023-01-01',
+    paddock_id: existingPaddockId
+  });
+  assert.equal(status, 201);
+  assert.equal(body.name, 'New Animal');
+  assert.equal(body.tag_number, 'TAG-NEW');
+  assert.equal(body.breed, 'Holstein');
+  assert.equal(body.date_of_birth, '2023-01-01');
+  assert.equal(body.paddock_id, existingPaddockId);
+
+  // Verify that the paddock animal count was updated
+  const { body: updatedPaddock } = await get(`/paddocks/${existingPaddockId}`);
+  assert.equal(updatedPaddock.animal_count, paddocks[0].animal_count + 1);
+});
+
+test('POST /api/animals returns 400 for missing name', async () => {
+  const { status, body } = await post('/animals', {
+    tag_number: 'TAG-MISSING-NAME',
+    breed: 'Merino'
+  });
+  assert.equal(status, 400);
+  assert.deepEqual(body.errors, ['Name is required and must be a non-empty string.']);
+});
+
+test('POST /api/animals returns 400 for missing tag_number', async () => {
+  const { status, body } = await post('/animals', {
+    name: 'Animal Missing Tag',
+    breed: 'Merino'
+  });
+  assert.equal(status, 400);
+  assert.deepEqual(body.errors, ['Tag number is required and must be a non-empty string.']);
+});
+
+test('POST /api/animals returns 400 for invalid date_of_birth format', async () => {
+  const { status, body } = await post('/animals', {
+    name: 'Invalid Date Animal',
+    tag_number: 'TAG-INVALID-DATE',
+    date_of_birth: '01-01-2023' // Invalid format
+  });
+  assert.equal(status, 400);
+  assert.deepEqual(body.errors, ['Date of birth must be in YYYY-MM-DD format.']);
+});
+
+test('POST /api/animals returns 400 for non-existent paddock_id', async () => {
+  const { status, body } = await post('/animals', {
+    name: 'No Paddock Animal',
+    tag_number: 'TAG-NO-PADDOCK',
+    paddock_id: 999999 // Non-existent ID
+  });
+  assert.equal(status, 400);
+  assert.deepEqual(body.errors, ['Paddock with ID 999999 does not exist.']);
+});
+
+test('POST /api/animals returns 400 for invalid paddock_id type', async () => {
+  const { status, body } = await post('/animals', {
+    name: 'Invalid Paddock Type Animal',
+    tag_number: 'TAG-INVALID-PADDOCK-TYPE',
+    paddock_id: 'not-a-number' // Invalid type
+  });
+  assert.equal(status, 400);
+  assert.deepEqual(body.errors, ['Paddock ID must be an integer.']);
+});
+
 test('POST /api/animals/:id/health-events creates an event', async () => {
   const { body: animals } = await get('/animals?page=0&limit=1');
   const id = animals[0].id;
