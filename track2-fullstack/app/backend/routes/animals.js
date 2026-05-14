@@ -1,16 +1,16 @@
 const express = require('express');
 const router = express.Router();
-const { db } = require('../db');
+const animalService = require('../services/animalService');
+const { db } = require('../db'); // Still needed for the specific latest event join
 
 router.get('/', (req, res) => {
   const page = parseInt(req.query.page) || 0;
   const limit = parseInt(req.query.limit) || 10;
 
-  const animals = db.prepare(
-    'SELECT * FROM animals LIMIT ? OFFSET ?'
-  ).all(limit, page);
+  const animals = animalService.getAllAnimals(limit, page);
 
   const result = animals.map(animal => {
+    // Keeping this join logic here for now as it crosses entities
     const latestEvent = db.prepare(`
       SELECT * FROM health_events
       WHERE animal_id = ?
@@ -52,82 +52,39 @@ router.post('/', (req, res) => {
     return res.status(400).json({ errors });
   }
 
-  if (paddock_id) {
-    db.prepare(
-      'UPDATE paddocks SET animal_count = animal_count + 1 WHERE id = ?'
-    ).run(paddock_id);
-  }
-
-  const result = db.prepare(
-    'INSERT INTO animals (name, tag_number, breed, date_of_birth, paddock_id) VALUES (?, ?, ?, ?, ?)'
-  ).run(name, tag_number, breed ?? null, date_of_birth ?? null, paddock_id ?? null);
-
-  const animal = db.prepare('SELECT * FROM animals WHERE id = ?').get(result.lastInsertRowid);
+  const result = animalService.createAnimal({ name, tag_number, breed, date_of_birth, paddock_id });
+  const animal = animalService.getAnimalById(result.lastInsertRowid);
   res.status(201).json(animal);
 });
 
 router.get('/:id', (req, res) => {
-  const animal = db.prepare('SELECT * FROM animals WHERE id = ?').get(req.params.id);
+  const animal = animalService.getAnimalById(req.params.id);
   if (!animal) return res.status(404).json({ error: 'Animal not found' });
   res.json(animal);
 });
 
 router.put('/:id', (req, res) => {
-  const animal = db.prepare('SELECT * FROM animals WHERE id = ?').get(req.params.id);
-  if (!animal) return res.status(404).json({ error: 'Animal not found' });
-
-  const updates = {
-    name:          req.body.name          ?? animal.name,
-    tag_number:    req.body.tag_number    ?? animal.tag_number,
-    breed:         req.body.breed         ?? animal.breed,
-    date_of_birth: req.body.date_of_birth ?? animal.date_of_birth,
-    paddock_id:    'paddock_id' in req.body ? req.body.paddock_id : animal.paddock_id,
-  };
-
-  if (updates.paddock_id !== animal.paddock_id) {
-    if (updates.paddock_id) {
-      db.prepare(
-        'UPDATE paddocks SET animal_count = animal_count + 1 WHERE id = ?'
-      ).run(updates.paddock_id);
-    }
-  }
-
-  db.prepare(`
-    UPDATE animals
-    SET name = ?, tag_number = ?, breed = ?, date_of_birth = ?, paddock_id = ?
-    WHERE id = ?
-  `).run(updates.name, updates.tag_number, updates.breed, updates.date_of_birth, updates.paddock_id, req.params.id);
-
-  const updated = db.prepare('SELECT * FROM animals WHERE id = ?').get(req.params.id);
+  const updated = animalService.updateAnimal(req.params.id, req.body);
+  if (!updated) return res.status(404).json({ error: 'Animal not found' });
   res.json(updated);
 });
 
 router.delete('/:id', (req, res) => {
-  const animal = db.prepare('SELECT * FROM animals WHERE id = ?').get(req.params.id);
-  if (!animal) return res.status(404).json({ error: 'Animal not found' });
-
-  if (animal.paddock_id) {
-    db.prepare(
-      'UPDATE paddocks SET animal_count = animal_count - 1 WHERE id = ?'
-    ).run(animal.paddock_id);
-  }
-
-  db.prepare('DELETE FROM animals WHERE id = ?').run(req.params.id);
+  const deleted = animalService.deleteAnimal(req.params.id);
+  if (!deleted) return res.status(404).json({ error: 'Animal not found' });
   res.json({ message: 'deleted' });
 });
 
 router.get('/:id/health-events', (req, res) => {
-  const animal = db.prepare('SELECT * FROM animals WHERE id = ?').get(req.params.id);
+  const animal = animalService.getAnimalById(req.params.id);
   if (!animal) return res.status(404).json({ error: 'Animal not found' });
 
-  const events = db.prepare(
-    'SELECT * FROM health_events WHERE animal_id = ? ORDER BY date DESC'
-  ).all(req.params.id);
+  const events = animalService.getHealthEvents(req.params.id);
   res.json(events);
 });
 
 router.post('/:id/health-events', (req, res) => {
-  const animal = db.prepare('SELECT * FROM animals WHERE id = ?').get(req.params.id);
+  const animal = animalService.getAnimalById(req.params.id);
   if (!animal) return res.status(404).json({ error: 'Animal not found' });
 
   const { event_type, notes, date, vet_name } = req.body;
@@ -135,25 +92,19 @@ router.post('/:id/health-events', (req, res) => {
     return res.status(400).json({ error: 'event_type and date are required' });
   }
 
-  const result = db.prepare(
-    'INSERT INTO health_events (animal_id, event_type, notes, date, vet_name) VALUES (?, ?, ?, ?, ?)'
-  ).run(req.params.id, event_type, notes ?? null, date, vet_name ?? null);
-
+  const result = animalService.createHealthEvent({ animal_id: req.params.id, event_type, notes, date, vet_name });
   const event = db.prepare('SELECT * FROM health_events WHERE id = ?').get(result.lastInsertRowid);
   res.status(201).json(event);
 });
 
-// Weight Tracking Endpoints
 router.post('/:id/weights', (req, res) => {
-  const animalId = req.params.id;
-  const { weight_kg, date, notes } = req.body;
-  const errors = [];
-
-  const animal = db.prepare('SELECT * FROM animals WHERE id = ?').get(animalId);
+  const animal = animalService.getAnimalById(req.params.id);
   if (!animal) {
     return res.status(404).json({ message: 'Animal not found' });
   }
 
+  const { weight_kg, date, notes } = req.body;
+  const errors = [];
   if (weight_kg === undefined || typeof weight_kg !== 'number' || weight_kg <= 0) {
     errors.push('Weight (weight_kg) is required and must be a positive number.');
   }
@@ -165,25 +116,18 @@ router.post('/:id/weights', (req, res) => {
     return res.status(400).json({ errors });
   }
 
-  const result = db.prepare(
-    'INSERT INTO weights (animal_id, weight_kg, date, notes) VALUES (?, ?, ?, ?)'
-  ).run(animalId, weight_kg, date, notes ?? null);
-
+  const result = animalService.createWeight({ animal_id: req.params.id, weight_kg, date, notes });
   const newWeight = db.prepare('SELECT * FROM weights WHERE id = ?').get(result.lastInsertRowid);
   res.status(201).json(newWeight);
 });
 
 router.get('/:id/weights', (req, res) => {
-  const animalId = req.params.id;
-
-  const animal = db.prepare('SELECT * FROM animals WHERE id = ?').get(animalId);
+  const animal = animalService.getAnimalById(req.params.id);
   if (!animal) {
     return res.status(404).json({ message: 'Animal not found' });
   }
 
-  const weights = db.prepare(
-    'SELECT * FROM weights WHERE animal_id = ? ORDER BY date DESC'
-  ).all(animalId);
+  const weights = animalService.getWeights(req.params.id);
   res.json(weights);
 });
 
