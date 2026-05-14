@@ -1,6 +1,6 @@
 # FarmTracker
 
-A livestock record management application for tracking animals, paddock assignments, and health events.
+A livestock record management application for tracking animals, paddock assignments, health events, and weight records.
 
 ## Requirements
 
@@ -36,14 +36,16 @@ app/
 │   ├── routes/
 │   │   ├── animals.js     # Animal endpoints
 │   │   └── paddocks.js    # Paddock endpoints
+│   ├── services/          # Business logic
+│   ├── repositories/      # Data access layer
 │   ├── test/
 │   │   └── api.test.js    # Integration tests
-│   ├── seed.js            # Seed script (run once after install)
+│   ├── seed.js            # Seed script
 │   └── package.json
 └── frontend/
     ├── index.html         # Paddocks overview
     ├── animals.html       # Animal list
-    ├── animal-detail.html # Animal detail and health events
+    ├── animal-detail.html # Animal detail, health, and weight events
     ├── app.js             # Shared fetch utilities
     └── styles.css
 ```
@@ -62,3 +64,5 @@ app/
 | DELETE | /api/animals/:id | Delete an animal |
 | GET | /api/animals/:id/health-events | List health events |
 | POST | /api/animals/:id/health-events | Log a health event |
+| GET | /api/animals/:id/weights | List weight history |
+| POST | /api/animals/:id/weights | Log a weight measurement |
