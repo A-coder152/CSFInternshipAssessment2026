@@ -143,4 +143,48 @@ router.post('/:id/health-events', (req, res) => {
   res.status(201).json(event);
 });
 
+// Weight Tracking Endpoints
+router.post('/:id/weights', (req, res) => {
+  const animalId = req.params.id;
+  const { weight_kg, date, notes } = req.body;
+  const errors = [];
+
+  const animal = db.prepare('SELECT * FROM animals WHERE id = ?').get(animalId);
+  if (!animal) {
+    return res.status(404).json({ message: 'Animal not found' });
+  }
+
+  if (weight_kg === undefined || typeof weight_kg !== 'number' || weight_kg <= 0) {
+    errors.push('Weight (weight_kg) is required and must be a positive number.');
+  }
+  if (!date || typeof date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    errors.push('Date is required and must be in YYYY-MM-DD format.');
+  }
+
+  if (errors.length > 0) {
+    return res.status(400).json({ errors });
+  }
+
+  const result = db.prepare(
+    'INSERT INTO weights (animal_id, weight_kg, date, notes) VALUES (?, ?, ?, ?)'
+  ).run(animalId, weight_kg, date, notes ?? null);
+
+  const newWeight = db.prepare('SELECT * FROM weights WHERE id = ?').get(result.lastInsertRowid);
+  res.status(201).json(newWeight);
+});
+
+router.get('/:id/weights', (req, res) => {
+  const animalId = req.params.id;
+
+  const animal = db.prepare('SELECT * FROM animals WHERE id = ?').get(animalId);
+  if (!animal) {
+    return res.status(404).json({ message: 'Animal not found' });
+  }
+
+  const weights = db.prepare(
+    'SELECT * FROM weights WHERE animal_id = ? ORDER BY date DESC'
+  ).all(animalId);
+  res.json(weights);
+});
+
 module.exports = router;
