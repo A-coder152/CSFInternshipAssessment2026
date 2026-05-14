@@ -43,6 +43,25 @@
         <button type="submit">Log Event</button>
       </form>
     </section>
+
+    <section id="weight-section" style="display:none">
+      <h3>Weight History</h3>
+      <div id="latest-weight"></div>
+      <table>
+        <thead>
+          <tr><th>Date</th><th>Weight (kg)</th><th>Notes</th></tr>
+        </thead>
+        <tbody id="weights-body"></tbody>
+      </table>
+
+      <h4>Log Weight Measurement</h4>
+      <form id="weight-form">
+        <label>Weight (kg) <input type="number" step="0.1" name="weight_kg" required></label>
+        <label>Date <input type="date" name="date" required></label>
+        <label>Notes <input type="text" name="notes" placeholder="Optional"></label>
+        <button type="submit">Log Weight</button>
+      </form>
+    </section>
   </main>
   <script src="app.js"></script>
   <script>
@@ -65,7 +84,9 @@
       `;
 
       document.getElementById('health-section').style.display = 'block';
+      document.getElementById('weight-section').style.display = 'block';
       await loadEvents();
+      await loadWeights();
     }
 
     async function loadEvents() {
@@ -83,12 +104,45 @@
         : '<tr><td colspan="4" class="empty">No events recorded.</td></tr>';
     }
 
+    async function loadWeights() {
+      const weights = await api.get(`/animals/${animalId}/weights`);
+      const tbody = document.getElementById('weights-body');
+      const latestDiv = document.getElementById('latest-weight');
+      
+      if (weights.length > 0) {
+        latestDiv.innerHTML = `<strong>Latest: ${weights[0].weight_kg} kg on ${weights[0].date}</strong>`;
+        tbody.innerHTML = weights.map(w => `
+            <tr>
+              <td>${w.date}</td>
+              <td>${w.weight_kg}</td>
+              <td>${w.notes ?? '—'}</td>
+            </tr>
+          `).join('');
+      } else {
+        latestDiv.innerHTML = '';
+        tbody.innerHTML = '<tr><td colspan="3" class="empty">No weights recorded.</td></tr>';
+      }
+    }
+
     document.getElementById('event-form').addEventListener('submit', async (e) => {
       e.preventDefault();
       const data = Object.fromEntries(new FormData(e.target));
       await api.post(`/animals/${animalId}/health-events`, data);
       e.target.reset();
       await loadEvents();
+    });
+
+    document.getElementById('weight-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const formData = new FormData(e.target);
+      const data = {
+        weight_kg: parseFloat(formData.get('weight_kg')),
+        date: formData.get('date'),
+        notes: formData.get('notes')
+      };
+      await api.post(`/animals/${animalId}/weights`, data);
+      e.target.reset();
+      await loadWeights();
     });
 
     load();
