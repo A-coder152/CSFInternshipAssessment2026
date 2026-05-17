@@ -24,8 +24,7 @@ class DogEmbedder:
                 transforms.ToTensor(),
                 transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
             ])
-        elif method == 'color_histogram':
-            # No initialization needed for color histogram
+        elif method in ['color_histogram', 'ssim']:
             pass
         elif method == 'orb':
             self.orb = cv2.ORB_create(nfeatures=500)
@@ -41,6 +40,9 @@ class DogEmbedder:
         if image_cv is None:
             raise ValueError(f"Could not read image at {image_path}")
         
+        # Resize all images for consistency in feature extraction
+        image_cv = cv2.resize(image_cv, (224, 224))
+        
         if self.method == 'resnet50' and HAS_TORCH:
             image_pil = Image.fromarray(cv2.cvtColor(image_cv, cv2.COLOR_BGR2RGB))
             image_tensor = self.preprocess(image_pil).unsqueeze(0)
@@ -50,20 +52,20 @@ class DogEmbedder:
             return features.squeeze(0).numpy()
         
         elif self.method == 'color_histogram':
-            # Compute a simple 3D color histogram
             hsv = cv2.cvtColor(image_cv, cv2.COLOR_BGR2HSV)
             hist = cv2.calcHist([hsv], [0, 1, 2], None, [8, 8, 8], [0, 180, 0, 256, 0, 256])
             cv2.normalize(hist, hist)
             return hist.flatten()
+
+        elif self.method == 'ssim':
+            # SSIM requires a grayscale image for structural comparison
+            gray = cv2.cvtColor(image_cv, cv2.COLOR_BGR2GRAY)
+            return gray.flatten() # Returning flattened gray image as representation
         
         elif self.method == 'orb':
-            # This is a bit more complex as ORB returns multiple descriptors
-            # We'll use a Bag of Words approach or just a simple mean for now (very crude)
             keypoints, descriptors = self.orb.detectAndCompute(image_cv, None)
             if descriptors is None:
-                return np.zeros((500 * 32,)) # ORB descriptor size is 32
-            # For a simple embedding, we'll just take the mean of descriptors
-            # In a real system, we'd use a visual vocabulary
+                return np.zeros((500 * 32,))
             return np.mean(descriptors, axis=0)
         
         return None

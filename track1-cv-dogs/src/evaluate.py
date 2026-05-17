@@ -57,7 +57,7 @@ if __name__ == "__main__":
     parser.add_argument("--query_dir", type=str, default="track1-cv-dogs/data/raw",
                         help="Path to the directory containing query images.")
     parser.add_argument("--method", type=str, default="color_histogram",
-                        choices=['resnet50', 'color_histogram', 'orb'],
+                        choices=['resnet50', 'color_histogram', 'orb', 'ssim'],
                         help="Feature extraction method to use.")
     parser.add_argument("--visualize", action="store_true", help="Visualize the results.")
     

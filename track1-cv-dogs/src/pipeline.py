@@ -59,7 +59,7 @@ def run_pipeline(reference_image_path, query_dir, method='color_histogram'):
     query_embeddings = np.array(query_embeddings)
     
     # Compute similarities
-    similarities = compute_similarity(ref_embedding, query_embeddings)
+    similarities = compute_similarity(ref_embedding, query_embeddings, method=method)
     
     # Rank results
     results = rank_results(valid_query_paths, similarities)
@@ -73,7 +73,7 @@ if __name__ == "__main__":
     parser.add_argument("--query_dir", type=str, default="track1-cv-dogs/data/raw",
                         help="Path to the directory containing query images.")
     parser.add_argument("--method", type=str, default="color_histogram",
-                        choices=['resnet50', 'color_histogram', 'orb'],
+                        choices=['resnet50', 'color_histogram', 'orb', 'ssim'],
                         help="Feature extraction method to use.")
     parser.add_argument("--visualize", action="store_true", help="Visualize the results.")
     
