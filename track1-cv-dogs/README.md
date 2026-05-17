@@ -56,6 +56,34 @@ python3 track1-cv-dogs/src/evaluate.py --reference_image track1-cv-dogs/data/raw
 ```
 The arguments are the same as for `pipeline.py`.
 
+## Deliverables
+
+Submit a link to a git repository containing the following. **Time window: 5–7 days.**
+
+### 1. Working Prototype
+
+A runnable pipeline with a clear entry point (e.g. a script or notebook). It should:
+- Accept a reference image and a set of query images
+- Return a ranked list or similarity scores indicating which queries match the reference
+- Include a `README.md` with setup and usage instructions
+
+You may use any framework (PyTorch, HuggingFace, TensorFlow, OpenCV, etc.).
+
+### 2. Evaluation
+
+Evaluate your pipeline on your chosen dataset. Include:
+- The metric(s) you chose and why (e.g. Rank-1 accuracy, mAP, threshold-based precision/recall)
+- Results on both positive matches (same dog) and negative matches (different dogs)
+- At least **one visualisation** of results — show cases where the system succeeds and where it fails
+
+### 3. Written Report (`REPORT.md`, ~500 words)
+
+Address the following:
+
+- **Approach:** What did you build and why? Walk through your key design decisions (feature extractor, similarity metric, embedding strategy, etc.)
+- **Failure modes:** Identify at least **two specific failure modes** you observed. For each, propose a concrete mitigation.
+- **Generalisation:** If you were applying this pipeline to a different species with far less publicly available data (e.g. sheep), what would need to change? What assumptions in your current approach would break?
+
 ## Dataset
 
 Currently, the pipeline uses a small set of sample dog images downloaded via `src/download_data.py`. For comprehensive evaluation, users are encouraged to source or prepare their own dataset as outlined in `BRIEF.md`.
