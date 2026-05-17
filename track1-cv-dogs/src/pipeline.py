@@ -1,6 +1,7 @@
 import os
 import glob
 import numpy as np
+import argparse
 from src.model import DogEmbedder
 from src.utils import compute_similarity, rank_results
 
@@ -41,12 +42,22 @@ def run_pipeline(reference_image_path, query_dir, method='color_histogram'):
     return results
 
 if __name__ == "__main__":
-    # Example usage
-    ref_img = "track1-cv-dogs/data/raw/dog_a_1.jpg"
-    q_dir = "track1-cv-dogs/data/raw"
+    parser = argparse.ArgumentParser(description="Run dog re-identification pipeline.")
+    parser.add_argument("--reference_image", type=str, default="track1-cv-dogs/data/raw/dog_a_1.jpg",
+                        help="Path to the reference image.")
+    parser.add_argument("--query_dir", type=str, default="track1-cv-dogs/data/raw",
+                        help="Path to the directory containing query images.")
+    parser.add_argument("--method", type=str, default="color_histogram",
+                        choices=['resnet50', 'color_histogram', 'orb'],
+                        help="Feature extraction method to use.")
     
-    results = run_pipeline(ref_img, q_dir)
+    args = parser.parse_args()
     
-    print(f"\nResults for reference: {os.path.basename(ref_img)}")
-    for path, score in results:
-        print(f"{os.path.basename(path)}: {score:.4f}")
+    results = run_pipeline(args.reference_image, args.query_dir, args.method)
+    
+    print(f"\nResults for reference: {os.path.basename(args.reference_image)}")
+    if results:
+        for path, score in results:
+            print(f"{os.path.basename(path)}: {score:.4f}")
+    else:
+        print("No results to display.")
