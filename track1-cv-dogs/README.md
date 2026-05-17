@@ -1,8 +1,10 @@
 # Dog Re-Identification (ReID) Pipeline
 
-This project aims to identify individual dogs across different images using fine-grained visual features.
+## Project Summary
+This project implements a robust dog re-identification pipeline designed for the Computer Vision internship assessment. It supports multiple feature extraction methods (ResNet-50, Color Histograms, and ORB), includes a visualization tool for result analysis, and provides a clear entry point for evaluation. The project is structured as a Python package with unit tests for core utilities, ensuring maintainability and ease of evaluation.
 
 ## Approach
+...
 
 1.  **Feature Extraction:** A `DogEmbedder` class is implemented to extract embeddings. It supports:
     *   **ResNet-50:** A pre-trained CNN for robust feature extraction (requires `torch`).
