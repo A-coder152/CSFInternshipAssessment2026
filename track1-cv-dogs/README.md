@@ -4,22 +4,6 @@ This project aims to identify individual dogs across different images using fine
 
 ## Approach
 
-1.  **Feature Extraction:** Use a pre-trained CNN (e.g., ResNet-50) or Vision Transformer (ViT) to extract embeddings from dog images.
-2.  **Similarity Metric:** Use Cosine Similarity to compare embeddings.
-3.  **Ranking:** Rank query images based on their similarity to the reference image.
-
-## Setup
-
-```bash
-pip install -r requirements.txt
-```
-
-# Dog Re-Identification (ReID) Pipeline
-
-This project aims to identify individual dogs across different images using fine-grained visual features.
-
-## Approach
-
 1.  **Feature Extraction:** A `DogEmbedder` class is implemented to extract embeddings. It supports:
     *   **ResNet-50:** A pre-trained CNN for robust feature extraction (requires `torch`).
     *   **Color Histogram:** A baseline method using OpenCV for environments without `torch` or for simpler analysis.
@@ -43,15 +27,36 @@ This project aims to identify individual dogs across different images using fine
 
 ## Usage
 
-To run the re-identification pipeline:
+### Run the Re-Identification Pipeline
+
+To run the re-identification pipeline and see ranked results:
 
 ```bash
-python3 track1-cv-dogs/src/pipeline.py
+python3 track1-cv-dogs/src/pipeline.py --reference_image <path_to_ref_img> --query_dir <path_to_query_dir> --method <feature_method> [--visualize]
 ```
-This script will use `dog_a_1.jpg` as a reference image and search for similar dogs in `track1-cv-dogs/data/raw/`. The results will be printed to the console, showing ranked query images and their similarity scores.
+**Example:**
+```bash
+python3 track1-cv-dogs/src/pipeline.py --reference_image track1-cv-dogs/data/raw/dog_a_1.jpg --query_dir track1-cv-dogs/data/raw --method color_histogram --visualize
+```
+-   `--reference_image`: Path to the reference image (default: `track1-cv-dogs/data/raw/dog_a_1.jpg`).
+-   `--query_dir`: Path to the directory containing query images (default: `track1-cv-dogs/data/raw`).
+-   `--method`: Feature extraction method (`resnet50`, `color_histogram`, `orb`). Default is `color_histogram`.
+-   `--visualize`: (Optional) Flag to display a visualization of the reference image and top-ranked query images.
 
-You can modify the `ref_img` and `q_dir` variables in `track1-cv-dogs/src/pipeline.py` to test with different images and directories. To use a different embedding method, you can pass it to the `run_pipeline` function (e.g., `run_pipeline(ref_img, q_dir, method='orb')`).
+### Run the Evaluation Script
+
+The `evaluate.py` script provides a wrapper to run the pipeline and can be extended for metric calculation.
+
+```bash
+python3 track1-cv-dogs/src/evaluate.py --reference_image <path_to_ref_img> --query_dir <path_to_query_dir> --method <feature_method> [--visualize]
+```
+**Example:**
+```bash
+python3 track1-cv-dogs/src/evaluate.py --reference_image track1-cv-dogs/data/raw/dog_a_1.jpg --query_dir track1-cv-dogs/data/raw --method orb --visualize
+```
+The arguments are the same as for `pipeline.py`.
 
 ## Dataset
 
 Currently, the pipeline uses a small set of sample dog images downloaded via `src/download_data.py`. For comprehensive evaluation, users are encouraged to source or prepare their own dataset as outlined in `BRIEF.md`.
+
