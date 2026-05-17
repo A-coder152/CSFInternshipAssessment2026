@@ -1,0 +1,28 @@
+# Byte-code files
+*.pyc
+__pycache__/
+
+# Environments
+.venv/
+venv/
+env/
+
+# Data
+data/
+*.sqlite
+*.db
+*.db-*
+
+# Models
+*.pt
+*.pth
+*.onnx
+*.h5
+*.tf
+*.ckpt
+
+# Logs
+*.log
+
+# Jupyter Notebooks
+.ipynb_checkpoints/
